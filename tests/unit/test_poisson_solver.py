@@ -9,12 +9,14 @@ from apps.poisson_solver import (
 from apps.problem_config import (
     config_from_json,
     config_to_json,
+    crm_shell_config,
     default_config,
     mesh_bytes_from_config,
     potential_flow_config,
     space_mapping_from_json,
     validate_data_values,
 )
+from apps.crm_solver import _summarize_spc_constraints, _validate_cases
 
 
 def _rectangle_mesh_bytes(tmp_path):
@@ -154,3 +156,58 @@ def test_potential_flow_template_matches_example_structure():
 def test_potential_flow_template_rejects_invalid_gaussian_width():
     with pytest.raises(ValueError, match="width"):
         potential_flow_config(source_width=0.0)
+
+
+def test_crm_shell_template_includes_shell_properties_and_named_load_case():
+    config = crm_shell_config()
+
+    assert config["problem_type"] == "crm_shell"
+    assert config["integrand_map"]["traction"]["integrand"] == "traction"
+    assert config["data_space"] == {"load": {"fz": "const"}}
+    assert config["load_cases"] == {"1 kN/m^2": {"load.fz": 1000.0}}
+    assert config["shell_options"] == {
+        "E": 70e9,
+        "nu": 0.3,
+        "ks": 5.0 / 6.0,
+        "t": 0.01,
+        "penalty": 1e-4,
+    }
+
+
+def test_crm_load_cases_validate_names_and_finite_data_values():
+    assert _validate_cases({"baseline": {"load.fz": 1000.0}}) == {
+        "baseline": {"load.fz": 1000.0}
+    }
+
+    with pytest.raises(ValueError, match="at least one"):
+        _validate_cases({})
+    with pytest.raises(ValueError, match="non-empty"):
+        _validate_cases({" ": {"load.fz": 1.0}})
+    with pytest.raises(ValueError, match="finite"):
+        _validate_cases({"bad": {"load.fz": float("nan")}})
+
+
+def test_crm_spc_summary_counts_unique_zero_valued_shell_dofs():
+    from types import SimpleNamespace
+    import numpy as np
+
+    counts = _summarize_spc_constraints(
+        {
+            "u": SimpleNamespace(
+                dofs=np.array([1, 2, 2]), values=np.array([0.0, 0.0, 0.0])
+            ),
+            "w": SimpleNamespace(dofs=np.array([4]), values=np.array([0.0])),
+        }
+    )
+
+    assert counts == {"u": 2, "w": 1}
+
+
+def test_crm_rejects_nonzero_spc_values_until_supported():
+    from types import SimpleNamespace
+    import numpy as np
+
+    with pytest.raises(ValueError, match="zero-valued"):
+        _summarize_spc_constraints(
+            {"w": SimpleNamespace(dofs=np.array([4]), values=np.array([2.0]))}
+        )

@@ -25,7 +25,7 @@ where = ["."]
 
 [project.optional-dependencies]
 openmdao = ["openmdao>=3.29"]
-app = ["streamlit>=1.57"]
+app = ["streamlit>=1.57", "pyNastran>=1.4", "stpyvista>=0.2.1"]
 
 [tool.scikit-build]
 cmake.version = ">=3.25"

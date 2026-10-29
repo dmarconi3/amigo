@@ -91,6 +91,9 @@ def inspect_mesh(mesh_name: str, mesh_bytes: bytes) -> dict[str, Any]:
             REFERENCE_CELLS[mesh.get_cell_type(block_id)].dimension
             for block_id in range(mesh.get_num_blocks())
         ),
+        "geometry_dimension": int(
+            np.count_nonzero(np.ptp(mesh.X, axis=0) > 1e-12)
+        ),
         "nodes": int(mesh.X.shape[0]),
         "blocks": [
             {

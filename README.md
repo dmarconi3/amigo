@@ -15,8 +15,12 @@ solution, geometry, and data spaces, enter an integrand map and boundary
 condition map, and provide Python functions for the integrands and custom
 boundary-condition callbacks. It includes Poisson and 2D source-sink
 potential-flow templates, supports potential and weak formulations, solves
-with Amigo, and displays scalar solution fields using PyVista. The potential
-flow template also offers vector glyphs for the potential gradient (velocity).
+with Amigo, and displays scalar solution fields in an interactive PyVista
+viewer. Left-drag rotates, middle-drag or Shift+left-drag pans, and right-drag
+or scroll zooms. The potential flow template also offers vector glyphs for the
+potential gradient (velocity).
+The **Mesh details** panel shows each domain's visibility setting in a
+single-click popover, with controls to show or hide all domains.
 
 Problem definitions can be downloaded as JSON and loaded later. Presets include
 the mesh as compressed data by default, so they can be moved between machines.
@@ -68,6 +72,23 @@ is a Poisson potential problem; the sidebar can also generate a small sample
 rectangular mesh. The source/sink template expects a 2D mesh whose domain names
 match the configured integrand and boundary targets; edit the maps for other
 mesh naming conventions.
+
+The **CRM MITC shell** template accepts Nastran BDF/NAS/DAT meshes containing
+quadrilateral shell elements and uses the mesh's `SPC`/`SPC1` cards as
+zero-valued displacement/rotation constraints. The result panel reports the
+number of imported constrained DOFs for each shell field. Nonzero enforced
+SPC values are rejected rather than silently treated as zero. It supports the
+six MITCShell fields (`u`, `v`, `w`,
+`rx`, `ry`, `rz`), editable material/thickness parameters, Python traction
+integrands, and named load cases. The default traction uses the constant
+`load.fz` data field; for example, load cases can set it to `1000.0` and
+`2000.0`. The result viewer can show the original mesh, a deformed mesh, or
+both overlaid. Deformation applies the solved `u`, `v`, and `w` translations,
+with a configurable scale factor for visual amplification; rotation fields
+remain scalar colors only. Select the Amigo LDL/Cholesky or SciPy sparse solver
+and configure the supported Amigo ordering and stabilization options in the
+**CRM shell** tab. This app environment installs `pyNastran` for BDF parsing
+and pins NumPy below 2 to satisfy its current dependency requirements.
 
 ## Installing Amigo using pixi
 

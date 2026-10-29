@@ -115,6 +115,68 @@ def potential(soln, data=None, geo=None):
     return config
 
 
+def crm_shell_config(
+    youngs_modulus: float = 70e9,
+    poisson_ratio: float = 0.3,
+    shear_correction: float = 5.0 / 6.0,
+    thickness: float = 0.01,
+    drill_penalty: float = 1e-4,
+) -> dict[str, Any]:
+    properties = {
+        "E": youngs_modulus,
+        "nu": poisson_ratio,
+        "ks": shear_correction,
+        "t": thickness,
+        "penalty": drill_penalty,
+    }
+    if any(not math.isfinite(value) for value in properties.values()):
+        raise ValueError("CRM shell properties must be finite numbers.")
+    if youngs_modulus <= 0 or thickness <= 0 or shear_correction <= 0:
+        raise ValueError("E, shell thickness, and shear correction must be positive.")
+    if not -1.0 < poisson_ratio < 0.5:
+        raise ValueError("Poisson ratio must be between -1 and 0.5.")
+    if drill_penalty < 0:
+        raise ValueError("Drill penalty must be non-negative.")
+
+    config = default_config()
+    config.update(
+        {
+            "name": "CRM MITC shell",
+            "problem_type": "crm_shell",
+            "integrand_formulation": "potential",
+            "function_source": """def traction(soln, geo=None, data=None):
+    w = soln["w"].value
+    fz = data["fz"].value
+    return -w * fz
+""",
+            "integrand_map": {
+                "shell": {"target": ["*"], "integrand": "shell_potential"},
+                "traction": {"target": ["*"], "integrand": "traction"},
+            },
+            "bc_map": {},
+            "solution_space": {"soln": {"u,v,w,rx,ry,rz": "MITCShell default"}},
+            "geometry_space": {
+                "geo": {"x,y,z": "MITCShell default"},
+                "normals": {"nx,ny,nz": "MITCShell default"},
+            },
+            "data_space": {"load": {"fz": "const"}},
+            "data_values": {},
+            "load_cases": {"1 kN/m^2": {"load.fz": 1000.0}},
+            "shell_options": properties,
+            "solver_options": {
+                "backend": "amigo",
+                "solver_type": "CHOLESKY",
+                "ustab": 0.05,
+                "pivot_tol": 1e-14,
+                "delay_growth": 2.0,
+                "ordering": "NATURAL",
+            },
+            "mesh": {"filename": None, "encoding": "gzip+base64", "content": None},
+        }
+    )
+    return config
+
+
 def config_to_json(
     config: dict[str, Any],
     mesh_filename: str | None,
